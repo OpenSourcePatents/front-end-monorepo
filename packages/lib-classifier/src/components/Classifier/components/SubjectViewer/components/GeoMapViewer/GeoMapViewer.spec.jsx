@@ -84,6 +84,37 @@ describe('Component > GeoMapViewer', function () {
     })
   })
 
+  describe('base map imagery status', function () {
+    it('shows a retry action when the active base layer reports a tile failure', async function () {
+      let map = null
+      render(<DefaultStory onMapReady={olMap => { map = olMap }} />)
+      await waitFor(() => expect(map).to.exist)
+      const source = map.getLayers().item(0).getSource()
+      source.dispatchEvent('tileloaderror')
+      expect(await screen.findByText('Some map imagery failed to load.')).to.exist
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+      await waitFor(() => {
+        expect(screen.queryByText('Some map imagery failed to load.')).to.not.exist
+      })
+    })
+
+    it('clears an imagery error when switching to another base layer', async function () {
+      const tileLayers = [
+        { type: 'osm', label: 'OpenStreetMap' },
+        { type: 'wms', label: 'Imagery', url: 'https://example.org/wms', params: { LAYERS: 'foo' } }
+      ]
+      let map = null
+      render(<DefaultStory tileLayers={tileLayers} onMapReady={olMap => { map = olMap }} />)
+      await waitFor(() => expect(map).to.exist)
+      map.getLayers().item(0).getSource().dispatchEvent('tileloaderror')
+      expect(await screen.findByText('Some map imagery failed to load.')).to.exist
+      fireEvent.click(screen.getByRole('tab', { name: 'Imagery' }))
+      await waitFor(() => {
+        expect(screen.queryByText('Some map imagery failed to load.')).to.not.exist
+      })
+    })
+  })
+
   describe('configured tile layers', function () {
     const twoLayers = [
       { type: 'osm', label: 'OpenStreetMap' },

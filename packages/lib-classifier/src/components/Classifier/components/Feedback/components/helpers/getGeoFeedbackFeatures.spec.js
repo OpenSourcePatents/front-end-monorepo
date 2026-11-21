@@ -88,6 +88,30 @@ describe('feedback getGeoFeedbackFeatures', function () {
     expect(miss.getStyle().getStroke().getColor()).to.equal(FEEDBACK_COLORS.failure)
   })
 
+  it('uses the matching drawing tool color for volunteer marks', function () {
+    const annotation = geoAnnotation([[-91.001, 48.001]])
+    annotation.task = 'T0'
+    annotation.value.features[0].properties.toolIndex = 1
+    const tasks = {
+      T0: {
+        tools: [
+          { type: 'Point', color: '#123456' },
+          { type: 'Point', color: '#abcdef' }
+        ]
+      }
+    }
+    const [, mark] = getGeoFeedbackFeatures([annotation], [radialRule], tasks)
+    expect(mark.getStyle().getImage().getStroke().getColor()).to.equal('#abcdef')
+  })
+
+  it('infers a tool by geometry type when a mark has no tool index', function () {
+    const annotation = geoAnnotation([[-91.001, 48.001]])
+    annotation.task = 'T0'
+    const tasks = { T0: { tools: [{ type: 'Point', color: '#123456' }] } }
+    const [, mark] = getGeoFeedbackFeatures([annotation], [radialRule], tasks)
+    expect(mark.getStyle().getImage().getStroke().getColor()).to.equal('#123456')
+  })
+
   it('should ignore annotations from other task types', function () {
     const drawingAnnotation = { taskType: 'drawing', value: [{ x: 1, y: 2 }] }
     expect(getGeoFeedbackFeatures([drawingAnnotation], [])).to.deep.equal([])

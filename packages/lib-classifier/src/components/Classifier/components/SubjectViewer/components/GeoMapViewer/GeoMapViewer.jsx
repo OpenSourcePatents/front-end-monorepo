@@ -1,4 +1,4 @@
-import { Box } from 'grommet'
+import { Box, Button, Text } from 'grommet'
 import { observer } from 'mobx-react'
 import { arrayOf, bool, func, number, shape, string } from 'prop-types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -83,6 +83,7 @@ function GeoMapViewer({
 }) {
   const [isMeasureModeActive, setIsMeasureModeActive] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState('meters')
+  const [imageryStatus, setImageryStatus] = useState('idle')
   const [currentLayerIndex, setCurrentLayerIndex] = useState(() => {
     const index = tileLayers.findIndex(tileLayer => tileLayer?.default)
     return index >= 0 ? index : 0
@@ -167,6 +168,60 @@ function GeoMapViewer({
   useEffect(() => {
     if (map && onMapReady) onMapReady(map)
   }, [map, onMapReady])
+
+  // Track the visible base layer only; hidden layers must not affect the status.
+  useEffect(() => {
+    const tileLayer = baseLayers[currentLayerIndex]
+    const tileSource = tileLayer?.getSource()
+    if (!tileSource?.on) {
+      setImageryStatus('idle')
+      return undefined
+    }
+
+    let pending = 0
+    let failed = false
+    let delay
+    const showLoading = () => {
+      clearTimeout(delay)
+      delay = setTimeout(() => {
+        if (pending > 0 && !failed) setImageryStatus('loading')
+      }, 400)
+    }
+    const onStart = () => {
+      pending += 1
+      if (!failed) showLoading()
+    }
+    const onEnd = () => {
+      pending = Math.max(0, pending - 1)
+      if (pending === 0) {
+        clearTimeout(delay)
+        if (!failed) setImageryStatus('idle')
+      }
+    }
+    const onError = () => {
+      failed = true
+      setImageryStatus('error')
+      onEnd()
+    }
+
+    setImageryStatus('idle')
+    const keys = [
+      tileSource.on('tileloadstart', onStart),
+      tileSource.on('tileloadend', onEnd),
+      tileSource.on('tileloaderror', onError)
+    ]
+    return () => {
+      clearTimeout(delay)
+      keys.forEach(unByKey)
+    }
+  }, [baseLayers, currentLayerIndex])
+
+  const retryImagery = useCallback(() => {
+    const tileSource = baseLayers[currentLayerIndex]?.getSource()
+    setImageryStatus('idle')
+    // Refresh the source to invalidate cached error tiles and request them again.
+    tileSource?.refresh()
+  }, [baseLayers, currentLayerIndex])
 
   useEffect(() => {
     if (!baseLayers.length) return
@@ -309,6 +364,18 @@ function GeoMapViewer({
           </>
         )}
       </ControlsBox>
+      {imageryStatus !== 'idle' && (
+        <Box
+          align='center'
+          background='background-front'
+          gap='small'
+          pad='small'
+          role='status'
+        >
+          <Text>{imageryStatus === 'loading' ? 'Loading map imagery…' : 'Some map imagery failed to load.'}</Text>
+          {imageryStatus === 'error' && <Button label='Retry' onClick={retryImagery} />}
+        </Box>
+      )}
       <MapContainer
         ref={containerRef}
         aria-label={t('SubjectViewer.GeoMapViewer.mapLabel')}

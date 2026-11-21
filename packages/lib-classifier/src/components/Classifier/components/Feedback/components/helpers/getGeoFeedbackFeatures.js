@@ -70,7 +70,7 @@ function volunteerFeature (geometry, color) {
 }
 
 // Target regions and volunteer marks as styled OL features, colored by success.
-function getGeoFeedbackFeatures (annotations = [], applicableRules = []) {
+function getGeoFeedbackFeatures (annotations = [], applicableRules = [], tasks = {}) {
   const features = []
 
   applicableRules.forEach(rule => {
@@ -83,11 +83,17 @@ function getGeoFeedbackFeatures (annotations = [], applicableRules = []) {
 
   annotations.forEach(annotation => {
     if (annotation.taskType !== 'geoDrawing') return
-    const geometries = (annotation.value?.features || [])
-      .map(feature => feature?.geometry)
-      .filter(Boolean)
-    geometries.forEach(geometry => {
-      const feature = volunteerFeature(geometry, feedbackColor(isSuccessful(geometry, applicableRules)))
+    const task = tasks[annotation.task]
+    const marks = (annotation.value?.features || []).filter(feature => feature?.geometry)
+    marks.forEach(mark => {
+      const geometry = mark.geometry
+      const explicitIndex = mark.properties?.toolIndex
+      const inferredType = geometry.type === 'Point' ? 'Point' : geometry.type === 'LineString' ? 'SegmentedLine' : undefined
+      const tool = typeof explicitIndex === 'number'
+        ? task?.tools?.[explicitIndex]
+        : task?.tools?.find(candidate => candidate.type === inferredType)
+      const color = tool?.color || feedbackColor(isSuccessful(geometry, applicableRules))
+      const feature = volunteerFeature(geometry, color)
       if (feature) features.push(feature)
     })
   })

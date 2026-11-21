@@ -23,12 +23,13 @@ function storeMapper (classifierStore) {
   return {
     annotations,
     applicableRules,
+    tasks: workflow?.tasks ?? {},
     tileLayers: workflow?.configuration?.subject_viewer_config?.tile_layers ?? []
   }
 }
 
 export default function GeoFeedback () {
-  const { annotations = [], applicableRules = [], tileLayers } = useStores(storeMapper)
+  const { annotations = [], applicableRules = [], tasks, tileLayers } = useStores(storeMapper)
   const mapElement = useRef(null)
 
   useEffect(function createFeedbackMap () {
@@ -36,7 +37,7 @@ export default function GeoFeedback () {
 
     const descriptors = tileLayers.length ? tileLayers : [{ type: 'osm' }]
     const source = new VectorSource({
-      features: getGeoFeedbackFeatures(annotations, applicableRules)
+      features: getGeoFeedbackFeatures(annotations, applicableRules, tasks)
     })
     const map = new Map({
       target: mapElement.current,
@@ -56,7 +57,7 @@ export default function GeoFeedback () {
     return function destroyFeedbackMap () {
       map.setTarget(undefined)
     }
-  }, [annotations, applicableRules, tileLayers])
+  }, [annotations, applicableRules, tasks, tileLayers])
 
   return (
     <MapContainer

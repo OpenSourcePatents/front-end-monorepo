@@ -84,6 +84,7 @@ function GeoMapViewer({
   const [isMeasureModeActive, setIsMeasureModeActive] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState('meters')
   const [imageryStatus, setImageryStatus] = useState('idle')
+  const [imageryRetry, setImageryRetry] = useState(0)
   const [currentLayerIndex, setCurrentLayerIndex] = useState(() => {
     const index = tileLayers.findIndex(tileLayer => tileLayer?.default)
     return index >= 0 ? index : 0
@@ -219,9 +220,10 @@ function GeoMapViewer({
   const retryImagery = useCallback(() => {
     const tileSource = baseLayers[currentLayerIndex]?.getSource()
     setImageryStatus('idle')
-    // Refresh the source to invalidate cached error tiles and request them again.
+    // Reset tile listeners and error tracking before requesting tiles again.
+    setImageryRetry(retry => retry + 1)
     tileSource?.refresh()
-  }, [baseLayers, currentLayerIndex])
+  }, [baseLayers, currentLayerIndex, imageryRetry])
 
   useEffect(() => {
     if (!baseLayers.length) return

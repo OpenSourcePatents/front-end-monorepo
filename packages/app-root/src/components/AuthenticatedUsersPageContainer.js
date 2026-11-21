@@ -1,7 +1,8 @@
 'use client'
 
-import { Loader, SpacedText } from '@zooniverse/react-components'
-import { Box } from 'grommet'
+import { AuthModal, Loader, SpacedText } from '@zooniverse/react-components'
+import { Box, Button } from 'grommet'
+import { useState } from 'react'
 
 function AuthenticatedUsersPageContainer({
   adminMode,
@@ -10,6 +11,8 @@ function AuthenticatedUsersPageContainer({
   login,
   user
 }) {
+  const [authModalActiveIndex, setAuthModalActiveIndex] = useState(-1)
+
   if (isLoading) {
     return (
       <Box as='main' height='100vh' align='center' justify='center'>
@@ -21,9 +24,16 @@ function AuthenticatedUsersPageContainer({
   if ((!user || Object.keys(user).length === 0)) {
     return (
       <Box as='main' height='100vh' align='center' justify='center'>
-        <SpacedText uppercase={false}>
-          Please log in.
-        </SpacedText>
+        <AuthModal
+          activeIndex={authModalActiveIndex}
+          closeModal={() => setAuthModalActiveIndex(-1)}
+          onActive={setAuthModalActiveIndex}
+        />
+        <Button
+          label='Please log in.'
+          onClick={() => setAuthModalActiveIndex(0)}
+          primary
+        />
       </Box>
     )
   }
